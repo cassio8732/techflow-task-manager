@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>TechFlow Task Manager</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 40px 20px;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  p.subtitle {
+    color: #94a3b8;
+    margin-top: 0;
+    margin-bottom: 28px;
+    font-size: 14px;
+  }
+  form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  input[type=text] {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 14px;
+  }
+  select {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 14px;
+  }
+  button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover { background: #1d4ed8; }
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .column {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 200px;
+  }
+  .column h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin: 0 0 10px 0;
+  }
+  .card {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .card .title { font-weight: 600; margin-bottom: 6px; }
+  .card .priority {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .priority.alta { background: #7f1d1d; color: #fecaca; }
+  .priority.media { background: #78350f; color: #fde68a; }
+  .priority.baixa { background: #14532d; color: #bbf7d0; }
+  .card .actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .card .actions select {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  .card .actions button {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: #b91c1c;
+  }
+  .card .actions button:hover { background: #991b1b; }
+  .empty { color: #64748b; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>TechFlow Task Manager</h1>
+    <p class="subtitle">Demonstração visual do CRUD (consumindo a API Flask em /tasks)</p>
+
+    <form id="task-form">
+      <input type="text" id="title" placeholder="Título da tarefa" required>
+      <select id="priority">
+        <option value="alta">Alta</option>
+        <option value="media" selected>Média</option>
+        <option value="baixa">Baixa</option>
+      </select>
+      <button type="submit">Adicionar tarefa</button>
+    </form>
+
+    <div class="columns">
+      <div class="column">
+        <h2>A Fazer</h2>
+        <div id="col-afazer"></div>
+      </div>
+      <div class="column">
+        <h2>Em Progresso</h2>
+        <div id="col-progresso"></div>
+      </div>
+      <div class="column">
+        <h2>Concluído</h2>
+        <div id="col-concluido"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const columns = {
+  "A Fazer": document.getElementById("col-afazer"),
+  "Em Progresso": document.getElementById("col-progresso"),
+  "Concluído": document.getElementById("col-concluido"),
+};
+
+async function loadTasks() {
+  const res = await fetch("/tasks");
+  const tasks = await res.json();
+
+  Object.values(columns).forEach(col => col.innerHTML = "");
+  const counts = { "A Fazer": 0, "Em Progresso": 0, "Concluído": 0 };
+
+  tasks.forEach(task => {
+    const col = columns[task.status] || columns["A Fazer"];
+    counts[task.status] = (counts[task.status] || 0) + 1;
+    col.appendChild(renderCard(task));
+  });
+
+  Object.entries(columns).forEach(([status, col]) => {
+    if (!counts[status]) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Nenhuma tarefa aqui.";
+      col.appendChild(empty);
+    }
+  });
+}
+
+function renderCard(task) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  card.innerHTML = `
+    <div class="priority ${task.priority}">${task.priority}</div>
+    <div class="title">${escapeHtml(task.title)}</div>
+    <div class="actions">
+      <select data-id="${task.id}" class="status-select">
+        <option value="A Fazer" ${task.status === "A Fazer" ? "selected" : ""}>A Fazer</option>
+        <option value="Em Progresso" ${task.status === "Em Progresso" ? "selected" : ""}>Em Progresso</option>
+        <option value="Concluído" ${task.status === "Concluído" ? "selected" : ""}>Concluído</option>
+      </select>
+      <button data-id="${task.id}" class="delete-btn">Excluir</button>
+    </div>
+  `;
+
+  card.querySelector(".status-select").addEventListener("change", async (e) => {
+    await fetch(`/tasks/${task.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: e.target.value }),
+    });
+    loadTasks();
+  });
+
+  card.querySelector(".delete-btn").addEventListener("click", async () => {
+    await fetch(`/tasks/${task.id}`, { method: "DELETE" });
+    loadTasks();
+  });
+
+  return card;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById("task-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("title").value.trim();
+  const priority = document.getElementById("priority").value;
+  if (!title) return;
+
+  await fetch("/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, priority }),
+  });
+
+  document.getElementById("title").value = "";
+  loadTasks();
+});
+
+loadTasks();
+</script>
+</body>
+</html>

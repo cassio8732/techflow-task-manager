@@ -7,13 +7,15 @@ atualizar e deletar tarefas, simulando o sistema solicitado pela
 startup de logística fictícia (TechFlow Solutions).
 """
 
-from flask import Flask, jsonify, request
+
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
 # "Banco de dados" em memória (lista de dicionários).
 # Simples de propósito, já que o foco do trabalho é o processo ágil
 # e não a persistência de dados.
+
 tasks = []
 next_id = 1
 
@@ -21,6 +23,12 @@ next_id = 1
 def find_task(task_id):
     """Busca uma tarefa pelo id. Retorna None se não encontrar."""
     return next((t for t in tasks if t["id"] == task_id), None)
+
+
+@app.route("/")
+def index():
+    """Serve a página HTML de demonstração visual do CRUD."""
+    return render_template("index.html")
 
 
 @app.route("/tasks", methods=["GET"])
@@ -35,10 +43,8 @@ def create_task():
     global next_id
     data = request.get_json(silent=True) or {}
     title = data.get("title")
-
     if not title:
         return jsonify({"error": "O campo 'title' é obrigatório"}), 400
-
     task = {
         "id": next_id,
         "title": title,
@@ -57,7 +63,6 @@ def update_task(task_id):
     task = find_task(task_id)
     if not task:
         return jsonify({"error": "Tarefa não encontrada"}), 404
-
     data = request.get_json(silent=True) or {}
     task["title"] = data.get("title", task["title"])
     task["status"] = data.get("status", task["status"])
@@ -71,7 +76,6 @@ def delete_task(task_id):
     task = find_task(task_id)
     if not task:
         return jsonify({"error": "Tarefa não encontrada"}), 404
-
     tasks.remove(task)
     return jsonify({"message": "Tarefa removida com sucesso"}), 200
 
